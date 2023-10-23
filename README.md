@@ -7,8 +7,8 @@ execute the DCIdecoder.py to decode the trace file created by the LTEanalyzer.
 A new csv file Trace_DATE_with_id.csv is created which contains the information carried by the control messages. This file will be used for the machine learning model.
 
 In the Trace_DATE_with_id.csv file, each row represents a DCI message, and the columns include the following features:
-Time: Unix timestamp in milliseconds
-rnti: Radio Network Temporary Identifier (RNTI) associated with the DCI
+- Time: Unix timestamp in milliseconds \n
+- rnti: Radio Network Temporary Identifier (RNTI) associated with the DCI
 SFN: system frame number
 format: DCI format (0: format0, 2: format1A, 6: format2)
 preamble: random access preamble
