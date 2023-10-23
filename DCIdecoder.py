@@ -29,6 +29,8 @@ import time
 import pandas as pd
 import os
 import sys
+import argparse
+
 
 
 ################################################################################
@@ -40,8 +42,9 @@ import sys
 # TraceName = "Trace20221014_160719"
 # earfcn = 900
 
-TraceName = "Trace20231023_164854"
-earfcn = 6200
+# TraceName = "Trace20231023_164854"
+# earfcn = 6200
+
 
 
 #################################################################################
@@ -66,10 +69,6 @@ histogram_filter_phase = True
 adding_connection_id = True
 
 # --------------------------- o ------------------------------
-# csv file path
-PATH_corrected = TraceName + "_corrected.csv"
-PATH_dci =  TraceName + '_DCIdecoded.csv'
-PATH_filter = TraceName + '_filter.csv'
 
 # formats
 SRSLTE_DCI_FORMAT0 = 0
@@ -97,109 +96,6 @@ MOD_256QAM = 8
 #  36.213 - Rel 13, Table 7.1.7.1-1 and Table 7.1.7.1-1A
 TBS_index_33A = 330
 TBS_index_26A = 330
-
-# cellular operator information
-if earfcn == 900:
-    # only for testbed
-    operator = "Amarisoft"
-    f_dl = 1800  # in MHz
-    Bw = 10  # in MHz
-elif earfcn == 9385:
-    operator = "Bouygues"
-    Bw = 5  # in MHz
-    f_dl = 775.5  # in MHz
-elif earfcn == 6200:
-    operator = "Bouygues"
-    Bw = 10  # in MHz
-    f_dl = 796  # in MHz
-elif earfcn == 1850:
-    operator = "Bouygues"
-    Bw = 20  # in MHz
-    f_dl = 1870  # in MHz
-elif earfcn == 227:
-    operator = "Bouygues"
-    Bw = 15  # in MHz
-    f_dl = 2132.7  # in MHz
-elif earfcn == 3175:
-    operator = "Bouygues"
-    Bw = 15  # in MHz
-    f_dl = 2662.5  # in MHz
-elif earfcn == 9310:
-    operator = "Orange"
-    Bw = 10  # in MHz
-    f_dl = 768  # in MHz
-elif earfcn == 6400:
-    operator = "Orange"
-    Bw = 10  # in MHz
-    f_dl = 816  # in MHz
-elif earfcn == 1300:
-    operator = "Orange"
-    Bw = 20  # in MHz
-    f_dl = 1815  # in MHz
-elif earfcn == 325:
-    operator = "Orange"
-    Bw = 5  # in MHz
-    f_dl = 2142.5  # in MHz
-elif earfcn == 525:
-    operator = "Orange"
-    Bw = 15  # in MHz
-    f_dl = 2162.5  # in MHz
-elif earfcn == 3000:
-    operator = "Orange"
-    Bw = 20  # in MHz
-    f_dl = 2645  # in MHz
-elif earfcn == 9235:
-    operator = "SFR"
-    Bw = 5  # in MHz
-    f_dl = 760.5  # in MHz
-elif earfcn == 6300:
-    operator = "SFR"
-    Bw = 10  # in MHz
-    f_dl = 806  # in MHz
-elif earfcn == 1501:
-    operator = "SFR"
-    Bw = 20  # in MHz
-    f_dl = 1835  # in MHz
-elif earfcn == 78:
-    operator = "SFR"
-    Bw = 15  # in MHz
-    f_dl = 2117.8  # in MHz
-elif earfcn == 424:
-    operator = "SFR"
-    Bw = 5  # in MHz
-    f_dl = 2152.4  # in MHz
-elif earfcn == 2825:
-    operator = "SFR"
-    Bw = 15  # in MHz
-    f_dl = 2627.5  # in MHz
-elif earfcn == 9460:
-    operator = "Free"
-    Bw = 10  # in MHz
-    f_dl = 783  # in MHz
-elif earfcn == 1675:
-    operator = "Free"
-    Bw = 15  # in MHz
-    f_dl = 1852.5  # in MHz
-elif earfcn == 3350:
-    operator = "Free"
-    Bw = 20  # in MHz
-    f_dl = 2680  # in MHz
-elif earfcn == 375:
-    operator = "Free"
-    Bw = 5  # in MHz
-    f_dl = 2147.5  # in MHz
-
-# Bandwidth to cell PRBs
-if Bw == 5:
-    NB_CELL_PRB = 25
-elif Bw == 10:
-    NB_CELL_PRB = 50
-elif Bw == 15:
-    NB_CELL_PRB = 75
-elif Bw == 20:
-    NB_CELL_PRB = 100
-else:
-    print("Error NB_CELL_PRB!")
 
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -895,7 +791,7 @@ def resource_block_group_size(N_rb_dl):
         raise ValueError("Error in number of cell resource blocks")
 
 # Function to calculate the Ngap for Type 2 Random Access
-def ra_type2_Ngap(gap):
+def ra_type2_Ngap(gap, NB_CELL_PRB):
     if NB_CELL_PRB <= 10:
         return math.ceil(NB_CELL_PRB / 2)
     elif NB_CELL_PRB == 11:
@@ -916,7 +812,7 @@ def ra_type2_Ngap(gap):
         return 48 if gap == 1 else 16
 
 # Function to calculate the number of VRBs for Type 2 RA
-def n_vrb_distributed_type2(Ngap, is_Ngap_1):
+def n_vrb_distributed_type2(Ngap, is_Ngap_1, NB_CELL_PRB):
     if is_Ngap_1:
         return 2 * min(Ngap, NB_CELL_PRB - Ngap)
     else:
@@ -932,7 +828,7 @@ def vrb_parameters_from_riv(riv, N_vrb, cell_prb):
     return RB_start, L_crb
 
 # Function to determine PRB index for Type 0 RA
-def prb_index_ra_type0(bitmap):
+def prb_index_ra_type0(bitmap, NB_CELL_PRB):
     prb_index = [0] * NB_CELL_PRB
     P = resource_block_group_size(NB_CELL_PRB)
     total_nb_rbgs = math.ceil(NB_CELL_PRB / P)
@@ -944,7 +840,7 @@ def prb_index_ra_type0(bitmap):
     return prb_index
 
 # Function to determine PRB index for Type 1 RA
-def prb_index_ra_type1(subset, shift_is_used, n_rb_type1, bitmap):
+def prb_index_ra_type1(subset, shift_is_used, n_rb_type1, bitmap,NB_CELL_PRB):
     prb_index = [0] * NB_CELL_PRB
     P = resource_block_group_size(NB_CELL_PRB)
     condition = (math.floor((NB_CELL_PRB - 1) / P)) % P
@@ -973,7 +869,7 @@ def prb_index_ra_type1(subset, shift_is_used, n_rb_type1, bitmap):
     return prb_index
 
 
-def prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap):
+def prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap, NB_CELL_PRB):
     prb_index = [0] * NB_CELL_PRB
 
     if is_localized_vrb:
@@ -986,21 +882,21 @@ def prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap):
             # always Ngap,1
             is_Ngap_1 = True
             riv = int(bitmap, 2)
-            Ngap = ra_type2_Ngap(1)
-            N_vrb = n_vrb_distributed_type2(Ngap, is_Ngap_1)
+            Ngap = ra_type2_Ngap(1, NB_CELL_PRB)
+            N_vrb = n_vrb_distributed_type2(Ngap, is_Ngap_1, NB_CELL_PRB)
         else:
             n_gap_flag = int(bitmap[0])  # one bit
             riv = int(bitmap[1:], 2)
             if n_gap_flag == 0:
                 # Ngap,1
                 is_Ngap_1 = True
-                Ngap = ra_type2_Ngap(1)
-                N_vrb = n_vrb_distributed_type2(Ngap, is_Ngap_1)
+                Ngap = ra_type2_Ngap(1, NB_CELL_PRB)
+                N_vrb = n_vrb_distributed_type2(Ngap, is_Ngap_1, NB_CELL_PRB)
             else:
                 # Ngap,2
                 is_Ngap_1 = False
-                Ngap = ra_type2_Ngap(2)
-                N_vrb = n_vrb_distributed_type2(Ngap, is_Ngap_1)
+                Ngap = ra_type2_Ngap(2, NB_CELL_PRB)
+                N_vrb = n_vrb_distributed_type2(Ngap, is_Ngap_1, NB_CELL_PRB)
 
     # riv value to L_crb and RB_start values
     if dci_format == SRSLTE_DCI_FORMAT1C:
@@ -1026,7 +922,7 @@ def prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap):
     else:
         # distributed VRB
         prb_index_distVRB = np.zeros((2, NB_CELL_PRB))
-        N_vrb = n_vrb_distributed_type2(Ngap, is_Ngap_1)
+        N_vrb = n_vrb_distributed_type2(Ngap, is_Ngap_1, NB_CELL_PRB)
 
         if is_Ngap_1:
             # Ngap,1
@@ -1229,7 +1125,7 @@ def tbs_idx_to_tbs_crnti(tbs_index, nb_prb, last_tbs):
     return tbs
 
 
-def nb_prb_from_prb_index(prb_index):
+def nb_prb_from_prb_index(prb_index, NB_CELL_PRB):
     nb_total_prb = 0
     for i in range(NB_CELL_PRB):
         if prb_index[i] == 1:
@@ -1251,7 +1147,7 @@ def nb_prb_from_prb_index(prb_index):
 # ################################################################################################
 
 # ------------------------------ Format 0 ------------------------------------
-def decode_dci_format_0(dci_format, payload, last_tbs1, last_tbs2):
+def decode_dci_format_0(dci_format, payload, last_tbs1, last_tbs2, NB_CELL_PRB):
     nb_tb = 1
     MCSi_1 = -2
     TBS_1 = -2
@@ -1342,7 +1238,7 @@ def decode_dci_format_0(dci_format, payload, last_tbs1, last_tbs2):
 # ---------------------------------------------------------------------------------------------
 #                               Format 1
 # ---------------------------------------------------------------------------------------------
-def decode_dci_format_1(payload, last_tbs1, last_tbs2):
+def decode_dci_format_1(payload, last_tbs1, last_tbs2, NB_CELL_PRB):
     # Format1 can be resource allocation type 0 or type 1
 
     nb_tb = 1
@@ -1374,7 +1270,7 @@ def decode_dci_format_1(payload, last_tbs1, last_tbs2):
         bitmap = payload[bit_idx: bit_idx + nb_bits_rb_assignment]
 
         # Physical resource allocation index
-        prb_index = prb_index_ra_type0(bitmap)
+        prb_index = prb_index_ra_type0(bitmap, NB_CELL_PRB)
         bit_idx += nb_bits_rb_assignment
 
     else:
@@ -1393,11 +1289,11 @@ def decode_dci_format_1(payload, last_tbs1, last_tbs2):
         # bitmap to PRB index
         nb_bits_bitmap = nb_bits_rb_assignment - nb_bits_subsets - nb_bits_shift
         bitmap = payload[bit_idx: bit_idx + nb_bits_bitmap]
-        prb_index = prb_index_ra_type1(subset, shift_is_used, nb_bits_bitmap, bitmap)
+        prb_index = prb_index_ra_type1(subset, shift_is_used, nb_bits_bitmap, bitmap,NB_CELL_PRB)
         bit_idx += nb_bits_bitmap
 
     # Number of physical resource blocks to be used by the CRNTI
-    nb_prb = nb_prb_from_prb_index(prb_index)
+    nb_prb = nb_prb_from_prb_index(prb_index, NB_CELL_PRB)
 
     # Modulation and coding scheme
     nb_bits_mcs = 5
@@ -1434,7 +1330,7 @@ def decode_dci_format_1(payload, last_tbs1, last_tbs2):
 # -----------------------------------------------------------------------------------
 #                                    Format 1A
 # -----------------------------------------------------------------------------------
-def decode_dci_format_1a(is_common_rnti, payload, last_tbs1, last_tbs2):
+def decode_dci_format_1a(is_common_rnti, payload, last_tbs1, last_tbs2, NB_CELL_PRB):
     dci_format = SRSLTE_DCI_FORMAT1A
     nb_tb = 1
     MCSi_2 = -2
@@ -1466,11 +1362,8 @@ def decode_dci_format_1a(is_common_rnti, payload, last_tbs1, last_tbs2):
         nb_bits_rb_assignment = math.ceil(math.log2(NB_CELL_PRB * (NB_CELL_PRB + 1) / 2))
         bitmap = payload[bit_idx: bit_idx + nb_bits_rb_assignment]
 
-        prb_index = prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap)
-
-
-
-        nb_prb = nb_prb_from_prb_index(prb_index)
+        prb_index = prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap, NB_CELL_PRB)
+        nb_prb = nb_prb_from_prb_index(prb_index, NB_CELL_PRB)
 
         bit_idx += nb_bits_rb_assignment
 
@@ -1526,7 +1419,7 @@ def decode_dci_format_1a(is_common_rnti, payload, last_tbs1, last_tbs2):
 # ---------------------------------------------------------------------------------------
 #                                       Format 1C
 # ---------------------------------------------------------------------------------------
-def decode_dci_format_1c(payload, last_tbs1, last_tbs2):
+def decode_dci_format_1c(payload, last_tbs1, last_tbs2, NB_CELL_PRB):
     dci_format = SRSLTE_DCI_FORMAT1C
     is_common_rnti = True
     is_localized_vrb = False
@@ -1543,13 +1436,13 @@ def decode_dci_format_1c(payload, last_tbs1, last_tbs2):
         n_step = 2
     else:
         n_step = 4
-    Ngap = ra_type2_Ngap(1)
+    Ngap = ra_type2_Ngap(1, NB_CELL_PRB)
     N_vrb = 2 * min(Ngap, NB_CELL_PRB - Ngap)
 
     nb_bits_rb_assignment = 1 + math.ceil(math.log2(math.floor(N_vrb / n_step) * (math.floor(N_vrb / n_step) + 1) / 2))
 
     bitmap = payload[bit_idx: bit_idx + nb_bits_rb_assignment]
-    prb_index = prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap)
+    prb_index = prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap, NB_CELL_PRB)
 
     # Number of physical resource blocks to be used by the CRNTI
     # When distributed type-2 is used, each slot in a PRB has an index
@@ -1557,7 +1450,7 @@ def decode_dci_format_1c(payload, last_tbs1, last_tbs2):
     # The number of RBs for slot 0 is equal to the number of RBs for slot 1
     # Then, the total number of PRB is equal to 2x number of RBs for slot 0:
 
-    nb_prb = nb_prb_from_prb_index(prb_index)
+    nb_prb = nb_prb_from_prb_index(prb_index, NB_CELL_PRB)
 
     bit_idx += nb_bits_rb_assignment
 
@@ -1577,7 +1470,7 @@ def decode_dci_format_1c(payload, last_tbs1, last_tbs2):
 # ------------------------------------------------------------------------------------------
 #                                       Format 1B
 # ------------------------------------------------------------------------------------------
-def decode_dci_format_1b(payload, last_tbs1, last_tbs2):
+def decode_dci_format_1b(payload, last_tbs1, last_tbs2, NB_CELL_PRB):
     dci_format = SRSLTE_DCI_FORMAT1B
     is_common_rnti = False
     nb_tb = 1
@@ -1599,7 +1492,7 @@ def decode_dci_format_1b(payload, last_tbs1, last_tbs2):
     nb_bits_rb_assignment = math.ceil(math.log2(NB_CELL_PRB * (NB_CELL_PRB + 1) / 2))
     bitmap = payload[bit_idx: bit_idx + nb_bits_rb_assignment]
 
-    prb_index = prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap)
+    prb_index = prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap, NB_CELL_PRB)
 
     # Number of physical resource blocks to be used by the CRNTI
     # When distributed type-2 is used, each slot in a PRB has an index
@@ -1607,7 +1500,7 @@ def decode_dci_format_1b(payload, last_tbs1, last_tbs2):
     # The number of RBs for slot 0 is equal to the number of RBs for slot 1
     # Then, the total number of PRB is equal to 2x number of RBs for slot 0:
 
-    nb_prb = nb_prb_from_prb_index(prb_index)
+    nb_prb = nb_prb_from_prb_index(prb_index, NB_CELL_PRB)
 
     bit_idx += nb_bits_rb_assignment
 
@@ -1635,7 +1528,7 @@ def decode_dci_format_1b(payload, last_tbs1, last_tbs2):
 # --------------------------------------------------------------------------------------------
 #                            Format 1D
 # --------------------------------------------------------------------------------------------
-def decode_dci_format_1d(payload, last_tbs1, last_tbs2):
+def decode_dci_format_1d(payload, last_tbs1, last_tbs2, NB_CELL_PRB):
     dci_format = SRSLTE_DCI_FORMAT1D
     is_common_rnti = False
     nb_tb = 1
@@ -1657,7 +1550,7 @@ def decode_dci_format_1d(payload, last_tbs1, last_tbs2):
     nb_bits_rb_assignment = math.ceil(math.log2(NB_CELL_PRB * (NB_CELL_PRB + 1) / 2))
     bitmap = payload[bit_idx: bit_idx + nb_bits_rb_assignment]
 
-    prb_index = prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap)
+    prb_index = prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap, NB_CELL_PRB)
 
     # Number of physical resource blocks to be used by the CRNTI
     # When distributed type-2 is used, each slot in a PRB has an index
@@ -1665,7 +1558,7 @@ def decode_dci_format_1d(payload, last_tbs1, last_tbs2):
     # The number of RBs for slot 0 is equal to the number of RBs for slot 1
     # Then, the total number of PRB is equal to 2x number of RBs for slot 0:
 
-    nb_prb = nb_prb_from_prb_index(prb_index)
+    nb_prb = nb_prb_from_prb_index(prb_index, NB_CELL_PRB)
 
     bit_idx += nb_bits_rb_assignment
 
@@ -1694,7 +1587,7 @@ def decode_dci_format_1d(payload, last_tbs1, last_tbs2):
 # ------------------------------------------------------------------------------
 #                                   Format 2
 # ------------------------------------------------------------------------------
-def decode_dci_format_2(payload, last_tbs1, last_tbs2):
+def decode_dci_format_2(payload, last_tbs1, last_tbs2, NB_CELL_PRB):
     # resource allocation type 0 and type 1
     nb_tb = 0  # number of transport blocks, it may be 1 or 2
     prb_index = [0] * NB_CELL_PRB  # PRBs assignment, a PRB has two slots
@@ -1723,7 +1616,7 @@ def decode_dci_format_2(payload, last_tbs1, last_tbs2):
         bitmap = payload[bit_idx: bit_idx + nb_bits_rb_assignment]
 
         # Physical resource allocation index
-        prb_index = prb_index_ra_type0(bitmap)
+        prb_index = prb_index_ra_type0(bitmap, NB_CELL_PRB)
 
         bit_idx += nb_bits_rb_assignment
 
@@ -1743,10 +1636,10 @@ def decode_dci_format_2(payload, last_tbs1, last_tbs2):
         # bitmap to PRB index
         nb_bits_bitmap = nb_bits_rb_assignment - nb_bits_subsets - nb_bits_shift
         bitmap = payload[bit_idx: bit_idx + nb_bits_bitmap]
-        prb_index = prb_index_ra_type1(subset, shift_is_used, nb_bits_bitmap, bitmap)
+        prb_index = prb_index_ra_type1(subset, shift_is_used, nb_bits_bitmap, bitmap, NB_CELL_PRB)
         bit_idx += nb_bits_bitmap
     # Number of physical resource blocks to be used by the CRNTI
-    nb_prb = nb_prb_from_prb_index(prb_index)
+    nb_prb = nb_prb_from_prb_index(prb_index, NB_CELL_PRB)
 
     #  ------------------------ TPC Command for PUCCH (2 bits) -----------------------
     nb_bits_tcp = 2
@@ -1831,7 +1724,7 @@ def decode_dci_format_2(payload, last_tbs1, last_tbs2):
 #                                      Format 2A
 #
 # ------------------------------------------------------------------------------------
-def decode_dci_format_2a(payload, last_tbs1, last_tbs2):
+def decode_dci_format_2a(payload, last_tbs1, last_tbs2,NB_CELL_PRB):
     # resource allocation type 0 and type 1
     nb_tb = 0  # number of transport blocks, it may be 1 or 2
 
@@ -1859,7 +1752,7 @@ def decode_dci_format_2a(payload, last_tbs1, last_tbs2):
         bitmap = payload[bit_idx: bit_idx + nb_bits_rb_assignment]
 
         # Physical resource allocation index
-        prb_index = prb_index_ra_type0(bitmap)
+        prb_index = prb_index_ra_type0(bitmap, NB_CELL_PRB)
 
         bit_idx += nb_bits_rb_assignment
 
@@ -1879,11 +1772,11 @@ def decode_dci_format_2a(payload, last_tbs1, last_tbs2):
         # bitmap to PRB index
         nb_bits_bitmap = nb_bits_rb_assignment - nb_bits_subsets - nb_bits_shift
         bitmap = payload[bit_idx: bit_idx + nb_bits_bitmap]
-        prb_index = prb_index_ra_type1(subset, shift_is_used, nb_bits_bitmap, bitmap)
+        prb_index = prb_index_ra_type1(subset, shift_is_used, nb_bits_bitmap, bitmap, NB_CELL_PRB)
         bit_idx += nb_bits_bitmap
 
     # Number of physical resource blocks to be used by the CRNTI
-    nb_prb = nb_prb_from_prb_index(prb_index)
+    nb_prb = nb_prb_from_prb_index(prb_index, NB_CELL_PRB)
 
     #  ------------------------ TPC Command for PUCCH (2 bits) -----------------------
     nb_bits_tcp = 2
@@ -1976,31 +1869,31 @@ def decode_dci_format_2a(payload, last_tbs1, last_tbs2):
 #                                       DCI decoder
 #
 #########################################################################################
-def decode_dci_payload(is_common_rnti, dci_format, payload, last_tbs1, last_tbs2):
+def decode_dci_payload(is_common_rnti, dci_format, payload, last_tbs1, last_tbs2, NB_CELL_PRB):
     # Formats
     if dci_format == SRSLTE_DCI_FORMAT0:
-        return decode_dci_format_0(dci_format, payload, last_tbs1, last_tbs2)
+        return decode_dci_format_0(dci_format, payload, last_tbs1, last_tbs2, NB_CELL_PRB)
 
     elif dci_format == SRSLTE_DCI_FORMAT1:
-        return decode_dci_format_1(payload, last_tbs1, last_tbs2)
+        return decode_dci_format_1(payload, last_tbs1, last_tbs2, decode_dci_format_1, NB_CELL_PRB)
 
     elif dci_format == SRSLTE_DCI_FORMAT1A:
-        return decode_dci_format_1a(is_common_rnti, payload, last_tbs1, last_tbs2)
+        return decode_dci_format_1a(is_common_rnti, payload, last_tbs1, last_tbs2, NB_CELL_PRB)
 
     elif dci_format == SRSLTE_DCI_FORMAT1C:
-        return decode_dci_format_1c(payload, last_tbs1, last_tbs2)
+        return decode_dci_format_1c(payload, last_tbs1, last_tbs2, NB_CELL_PRB)
 
     elif dci_format == SRSLTE_DCI_FORMAT1B:
-        return decode_dci_format_1b(payload, last_tbs1, last_tbs2)
+        return decode_dci_format_1b(payload, last_tbs1, last_tbs2, NB_CELL_PRB)
 
     elif dci_format == SRSLTE_DCI_FORMAT1D:
-        return decode_dci_format_1d(payload, last_tbs1, last_tbs2)
+        return decode_dci_format_1d(payload, last_tbs1, last_tbs2, NB_CELL_PRB)
 
     elif dci_format == SRSLTE_DCI_FORMAT2:
-        return decode_dci_format_2(payload, last_tbs1, last_tbs2)
+        return decode_dci_format_2(payload, last_tbs1, last_tbs2, NB_CELL_PRB)
 
     elif dci_format == SRSLTE_DCI_FORMAT2A:
-        return decode_dci_format_2a(payload, last_tbs1, last_tbs2)
+        return decode_dci_format_2a(payload, last_tbs1, last_tbs2, NB_CELL_PRB)
 
     else:
         nb_tb = 0  # number of transport blocks, it may be 1 or 2
@@ -2015,392 +1908,519 @@ def decode_dci_payload(is_common_rnti, dci_format, payload, last_tbs1, last_tbs2
         return nb_tb, MCSi_1, MCSi_2, TBS_1, TBS_2, nb_prb, prb_index
 
 
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#
-#                               Time correction
-#
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-# This section of the code reads the CSV file created by the LTE analyzer in chunks and performs time correction.
-# The goal is to align the timestamp from the LTE analyzer with the SFN (System Frame Number) of the DCI message.
-# The timestamp is provided in Unix timestamp format in UTC, while the SFN varies from 0 to 10239.
 
-# It calculates the time and SFN differences, corrects any discrepancies in the SFN value based on time differences,
-# and creates a new 'Adjusted_Time' column to ensure a consistent chronological order in the data.
+def main():
+    parser = argparse.ArgumentParser(description="DCI Decoder")
+    parser.add_argument("-t", "--trace_name", required=True,
+                        help="TraceName in the format 'TraceYYYYMMDD_HHMMSS.csv'")
+    parser.add_argument("-e", "--earfcn", type=int, required=True, help="EARFCN value")
+    args = parser.parse_args()
 
-# The corrected data is then saved to a new CSV file, preserving the corrected timestamps and SFN values.
-# The code is used for the processing of extensive CSV files (several tens of gigabytes)
+    base, _ = os.path.splitext(args.trace_name)
+    TraceName = base
+    earfcn = args.earfcn
 
-if time_correction_phase:
-    print(" ********* Decoding DCI payload ********** ")
+    print(f"TraceName: {TraceName}")
+    print(f"EARFCN: {earfcn}")
 
-    # Define file paths and parameters
-    PATH_file = TraceName + ".csv"
-    chunksize = 100000 #
-    last_rows = 160
+    # csv file path
+    PATH_corrected = TraceName + "_corrected.csv"
+    PATH_dci = TraceName + '_DCIdecoded.csv'
+    PATH_filter = TraceName + '_filter.csv'
 
-    i = 0
-    data_df1 = None
+    # cellular operator information
+    if earfcn == 900:
+        # only for testbed
+        operator = "Amarisoft"
+        f_dl = 1800  # in MHz
+        Bw = 10  # in MHz
+    elif earfcn == 9385:
+        operator = "Bouygues"
+        Bw = 5  # in MHz
+        f_dl = 775.5  # in MHz
+    elif earfcn == 6200:
+        operator = "Bouygues"
+        Bw = 10  # in MHz
+        f_dl = 796  # in MHz
+    elif earfcn == 1850:
+        operator = "Bouygues"
+        Bw = 20  # in MHz
+        f_dl = 1870  # in MHz
+    elif earfcn == 227:
+        operator = "Bouygues"
+        Bw = 15  # in MHz
+        f_dl = 2132.7  # in MHz
+    elif earfcn == 3175:
+        operator = "Bouygues"
+        Bw = 15  # in MHz
+        f_dl = 2662.5  # in MHz
+    elif earfcn == 9310:
+        operator = "Orange"
+        Bw = 10  # in MHz
+        f_dl = 768  # in MHz
+    elif earfcn == 6400:
+        operator = "Orange"
+        Bw = 10  # in MHz
+        f_dl = 816  # in MHz
+    elif earfcn == 1300:
+        operator = "Orange"
+        Bw = 20  # in MHz
+        f_dl = 1815  # in MHz
+    elif earfcn == 325:
+        operator = "Orange"
+        Bw = 5  # in MHz
+        f_dl = 2142.5  # in MHz
+    elif earfcn == 525:
+        operator = "Orange"
+        Bw = 15  # in MHz
+        f_dl = 2162.5  # in MHz
+    elif earfcn == 3000:
+        operator = "Orange"
+        Bw = 20  # in MHz
+        f_dl = 2645  # in MHz
+    elif earfcn == 9235:
+        operator = "SFR"
+        Bw = 5  # in MHz
+        f_dl = 760.5  # in MHz
+    elif earfcn == 6300:
+        operator = "SFR"
+        Bw = 10  # in MHz
+        f_dl = 806  # in MHz
+    elif earfcn == 1501:
+        operator = "SFR"
+        Bw = 20  # in MHz
+        f_dl = 1835  # in MHz
+    elif earfcn == 78:
+        operator = "SFR"
+        Bw = 15  # in MHz
+        f_dl = 2117.8  # in MHz
+    elif earfcn == 424:
+        operator = "SFR"
+        Bw = 5  # in MHz
+        f_dl = 2152.4  # in MHz
+    elif earfcn == 2825:
+        operator = "SFR"
+        Bw = 15  # in MHz
+        f_dl = 2627.5  # in MHz
+    elif earfcn == 9460:
+        operator = "Free"
+        Bw = 10  # in MHz
+        f_dl = 783  # in MHz
+    elif earfcn == 1675:
+        operator = "Free"
+        Bw = 15  # in MHz
+        f_dl = 1852.5  # in MHz
+    elif earfcn == 3350:
+        operator = "Free"
+        Bw = 20  # in MHz
+        f_dl = 2680  # in MHz
+    elif earfcn == 375:
+        operator = "Free"
+        Bw = 5  # in MHz
+        f_dl = 2147.5  # in MHz
 
-    # Iterate through the data in chunks
-    for data_df in pd.read_csv(PATH_file, chunksize=chunksize, dtype={'dci_payload': 'str'}, low_memory=False):
-        if i > 0:
-            data_df = pd.concat([data_df1, data_df])
-
-        # Calculate the time and SFN difference and create a new column 'SFN_Diff_corr'
-        data_df['Time_diff'] = data_df['Time'].diff()
-        data_df['SFN_Diff'] = data_df['SFN'].diff()
-        data_df['SFN_Diff_corr'] = data_df['SFN_Diff']
-
-        # Correct the 'SFN_Diff_corr' based on time differences
-        # If time is not missing cycles
-        data_df.loc[(data_df['SFN_Diff'] < 0) & (data_df['Time_diff'] >= 10238 + data_df['SFN_Diff']) & (data_df['Time_diff'] <= 10239), 'SFN_Diff_corr'] = 10240 + data_df['SFN_Diff']
-        data_df.loc[(data_df['SFN_Diff'] > 0) & (data_df['Time_diff'] <= -10240 + data_df['SFN_Diff']), 'SFN_Diff_corr'] = -10240 + data_df['SFN_Diff']
+    # Bandwidth to cell PRBs
+    if Bw == 5:
+        NB_CELL_PRB = 25
+    elif Bw == 10:
+        NB_CELL_PRB = 50
+    elif Bw == 15:
+        NB_CELL_PRB = 75
+    elif Bw == 20:
+        NB_CELL_PRB = 100
+    else:
+        print("Error NB_CELL_PRB!")
 
 
-        # If time is missing cycles
-        data_df.loc[(data_df['SFN_Diff'] >= 0) & (data_df['Time_diff'] > 10239), 'SFN_Diff_corr'] = (data_df['Time_diff'] // 10240) * 10240 + data_df['SFN_Diff']
-        data_df.loc[(data_df['SFN_Diff'] < 0) & (data_df['Time_diff'] > 10239), 'SFN_Diff_corr'] = (data_df['Time_diff'] // 10240) * 10240 + 10240 + data_df['SFN_Diff']
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    #
+    #                               Time correction
+    #
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # This section of the code reads the CSV file created by the LTE analyzer in chunks and performs time correction.
+    # The goal is to align the timestamp from the LTE analyzer with the SFN (System Frame Number) of the DCI message.
+    # The timestamp is provided in Unix timestamp format in UTC, while the SFN varies from 0 to 10239.
 
-        # Calculate cumulative SFN
-        data_df['Cum_SFN'] = data_df['SFN_Diff_corr'].cumsum() + data_df['SFN'].iloc[0]
-        data_df['Cum_SFN'] = data_df['Cum_SFN'].fillna(data_df['SFN'].iloc[0])
-        data_df['Cum_SFN'] = data_df['Cum_SFN'].astype('int64')
-        data_df = data_df.sort_values(['Cum_SFN']).reset_index(drop=True)
+    # It calculates the time and SFN differences, corrects any discrepancies in the SFN value based on time differences,
+    # and creates a new 'Adjusted_Time' column to ensure a consistent chronological order in the data.
 
-        # Adjust times and create 'Adjusted_Time' column
-        data_df['Adjusted_Time'] = data_df['Cum_SFN'] - data_df['Cum_SFN'].iloc[0] + data_df['Time'].iloc[0]
-        data_df['Adjusted_Time'] = data_df['Adjusted_Time'].fillna(data_df['Time'].iloc[0])
-        data_df['Adjusted_Time'] = data_df['Adjusted_Time'].astype('int64')
+    # The corrected data is then saved to a new CSV file, preserving the corrected timestamps and SFN values.
+    # The code is used for the processing of extensive CSV files (several tens of gigabytes)
 
-        if i == 0:
-            data_df['Time'] = data_df['Adjusted_Time']
-            data_df1 = data_df.drop(range(0, len(data_df) - last_rows))
-            data_df = data_df.drop(['SFN_Diff', 'Cum_SFN', 'Adjusted_Time', 'SFN_Diff_corr', 'Time_diff'], axis=1)
-            data_df.iloc[:len(data_df) - last_rows].to_csv(PATH_corrected, mode='w', header=True, index=False)
-        else:
-            data_df['Time'] = data_df['Adjusted_Time']
-            data_df1 = data_df.drop(range(0, len(data_df) - last_rows))
-            data_df = data_df.drop(['SFN_Diff', 'Cum_SFN', 'Adjusted_Time', 'SFN_Diff_corr', 'Time_diff'], axis=1)
-            data_df.iloc[:len(data_df) - last_rows].to_csv(PATH_corrected, mode='a', header=False, index=False)
+    if time_correction_phase:
+        print(" ********* Decoding DCI payload ********** ")
 
-        del data_df
-        i += chunksize
+        # Define file paths and parameters
+        PATH_file = TraceName + ".csv"
+        chunksize = 100000 #
+        last_rows = 160
 
-    # Save the final adjusted data
-    data_df1 = data_df1.drop(['SFN_Diff', 'Cum_SFN', 'Adjusted_Time', 'SFN_Diff_corr', 'Time_diff'], axis=1)
-    data_df1.to_csv(PATH_corrected, mode='a', header=False, index=False)
-    del data_df1
+        i = 0
+        data_df1 = None
 
-    print("Time correction completed.")
-else:
-    print("\n No time correction phase ! \n\n")
+        # Iterate through the data in chunks
+        for data_df in pd.read_csv(PATH_file, chunksize=chunksize, dtype={'dci_payload': 'str'}, low_memory=False):
+            if i > 0:
+                data_df = pd.concat([data_df1, data_df])
+
+            # Calculate the time and SFN difference and create a new column 'SFN_Diff_corr'
+            data_df['Time_diff'] = data_df['Time'].diff()
+            data_df['SFN_Diff'] = data_df['SFN'].diff()
+            data_df['SFN_Diff_corr'] = data_df['SFN_Diff']
+
+            # Correct the 'SFN_Diff_corr' based on time differences
+            # If time is not missing cycles
+            data_df.loc[(data_df['SFN_Diff'] < 0) & (data_df['Time_diff'] >= 10238 + data_df['SFN_Diff']) & (data_df['Time_diff'] <= 10239), 'SFN_Diff_corr'] = 10240 + data_df['SFN_Diff']
+            data_df.loc[(data_df['SFN_Diff'] > 0) & (data_df['Time_diff'] <= -10240 + data_df['SFN_Diff']), 'SFN_Diff_corr'] = -10240 + data_df['SFN_Diff']
 
 
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#
-#                               Decoding and performance analysis phase
-#
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            # If time is missing cycles
+            data_df.loc[(data_df['SFN_Diff'] >= 0) & (data_df['Time_diff'] > 10239), 'SFN_Diff_corr'] = (data_df['Time_diff'] // 10240) * 10240 + data_df['SFN_Diff']
+            data_df.loc[(data_df['SFN_Diff'] < 0) & (data_df['Time_diff'] > 10239), 'SFN_Diff_corr'] = (data_df['Time_diff'] // 10240) * 10240 + 10240 + data_df['SFN_Diff']
 
-# This section decodes Downlink Control Information (DCI) messages and performs performance analysis.
-# Various DCI attributes are extracted and analyzed, including time intervals, formats, and payload.
-# Decoded information is written to a new file, including added columns for analysis.
+            # Calculate cumulative SFN
+            data_df['Cum_SFN'] = data_df['SFN_Diff_corr'].cumsum() + data_df['SFN'].iloc[0]
+            data_df['Cum_SFN'] = data_df['Cum_SFN'].fillna(data_df['SFN'].iloc[0])
+            data_df['Cum_SFN'] = data_df['Cum_SFN'].astype('int64')
+            data_df = data_df.sort_values(['Cum_SFN']).reset_index(drop=True)
 
-# Finally, the monitoring period and missing subframes percentage are calculated. In each sub-frame,
-# the LTE analyzer saves the found DCI messages. If no DCI messages are found, it saves the timestamp
-# to indicate that the sub-frame was analyzed.
+            # Adjust times and create 'Adjusted_Time' column
+            data_df['Adjusted_Time'] = data_df['Cum_SFN'] - data_df['Cum_SFN'].iloc[0] + data_df['Time'].iloc[0]
+            data_df['Adjusted_Time'] = data_df['Adjusted_Time'].fillna(data_df['Time'].iloc[0])
+            data_df['Adjusted_Time'] = data_df['Adjusted_Time'].astype('int64')
 
-# In the case of MIMO, there can be up to two transport blocks
-# nb_TB: number of enabled transport blocks (TB)
-# MCSi_1: Modulation Coding Scheme (MCS) index of the first transport block (-2: TB is disabled )
-# MCSi_2: MCS index of the second transport block (-2: TB is disabled )
-# TBS_1: TBS of first transport block (-2: TB is disabled )
-# TBS_2: TBS of second transport block (-2: TB is disabled )
-# nb_PRB: number of allocated PRBs
+            if i == 0:
+                data_df['Time'] = data_df['Adjusted_Time']
+                data_df1 = data_df.drop(range(0, len(data_df) - last_rows))
+                data_df = data_df.drop(['SFN_Diff', 'Cum_SFN', 'Adjusted_Time', 'SFN_Diff_corr', 'Time_diff'], axis=1)
+                data_df.iloc[:len(data_df) - last_rows].to_csv(PATH_corrected, mode='w', header=True, index=False)
+            else:
+                data_df['Time'] = data_df['Adjusted_Time']
+                data_df1 = data_df.drop(range(0, len(data_df) - last_rows))
+                data_df = data_df.drop(['SFN_Diff', 'Cum_SFN', 'Adjusted_Time', 'SFN_Diff_corr', 'Time_diff'], axis=1)
+                data_df.iloc[:len(data_df) - last_rows].to_csv(PATH_corrected, mode='a', header=False, index=False)
 
-if decoding_dci_phase:
-    nb_dci_msg = 0
+            del data_df
+            i += chunksize
 
-    # Performance analysis variables
-    last_time_performance = 0
-    total_missing_sf = 0
+        # Save the final adjusted data
+        data_df1 = data_df1.drop(['SFN_Diff', 'Cum_SFN', 'Adjusted_Time', 'SFN_Diff_corr', 'Time_diff'], axis=1)
+        data_df1.to_csv(PATH_corrected, mode='a', header=False, index=False)
+        del data_df1
 
-    # Storage for the last TBS used by the CRNTI
-    # last_tbs_crnti: [last_tbs1_dl, last_tbs2_dl, last_tbs_ul], where CRNTI is the index
-    last_tbs_crnti = np.zeros((65536, 3))
+        print("Time correction completed.")
+    else:
+        print("\n No time correction phase ! \n\n")
 
-    with open(PATH_corrected, 'r') as file_trace, open(PATH_dci, 'w', newline='') as new_file_trace:
 
-        csv_reader = csv.reader(file_trace)
-        csv_writer = csv.writer(new_file_trace)
-        columns_names = next(csv_reader)
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    #
+    #                               Decoding and performance analysis phase
+    #
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-        # Define new column names
-        new_columns_names = columns_names
-        new_columns_names.extend(['nb_TB', 'MCSi_1', 'MCSi_2', 'TBS_1', 'TBS_2', 'nb_PRB'])
+    # This section decodes Downlink Control Information (DCI) messages and performs performance analysis.
+    # Various DCI attributes are extracted and analyzed, including time intervals, formats, and payload.
+    # Decoded information is written to a new file, including added columns for analysis.
 
-        # Column indices
-        time_column = columns_names.index('Time')
-        rnti_column = columns_names.index('rnti')
-        format_column = columns_names.index('format')
-        payload_column = columns_names.index('dci_payload')
+    # Finally, the monitoring period and missing subframes percentage are calculated. In each sub-frame,
+    # the LTE analyzer saves the found DCI messages. If no DCI messages are found, it saves the timestamp
+    # to indicate that the sub-frame was analyzed.
 
-        csv_writer.writerow(new_columns_names)
+    # In the case of MIMO, there can be up to two transport blocks
+    # nb_TB: number of enabled transport blocks (TB)
+    # MCSi_1: Modulation Coding Scheme (MCS) index of the first transport block (-2: TB is disabled )
+    # MCSi_2: MCS index of the second transport block (-2: TB is disabled )
+    # TBS_1: TBS of first transport block (-2: TB is disabled )
+    # TBS_2: TBS of second transport block (-2: TB is disabled )
+    # nb_PRB: number of allocated PRBs
 
-        is_first_row = True
-        for line in file_trace:
-            nb_dci_msg += 1
-            line = line.strip()
-            data_trace = line.split(',')
+    if decoding_dci_phase:
+        nb_dci_msg = 0
 
-            if len(data_trace) < 5:
-                print("ERROR: Number of columns < 5")
-                continue
+        # Performance analysis variables
+        last_time_performance = 0
+        total_missing_sf = 0
 
-            # Trace information
-            current_time = int(data_trace[time_column])
-            current_rnti = int(float(data_trace[rnti_column]))
+        # Storage for the last TBS used by the CRNTI
+        # last_tbs_crnti: [last_tbs1_dl, last_tbs2_dl, last_tbs_ul], where CRNTI is the index
+        last_tbs_crnti = np.zeros((65536, 3))
 
-            # Performance analysis
-            if is_first_row:
-                first_time_trace = current_time
+        with open(PATH_corrected, 'r') as file_trace, open(PATH_dci, 'w', newline='') as new_file_trace:
+
+            csv_reader = csv.reader(file_trace)
+            csv_writer = csv.writer(new_file_trace)
+            columns_names = next(csv_reader)
+
+            # Define new column names
+            new_columns_names = columns_names
+            new_columns_names.extend(['nb_TB', 'MCSi_1', 'MCSi_2', 'TBS_1', 'TBS_2', 'nb_PRB'])
+
+            # Column indices
+            time_column = columns_names.index('Time')
+            rnti_column = columns_names.index('rnti')
+            format_column = columns_names.index('format')
+            payload_column = columns_names.index('dci_payload')
+
+            csv_writer.writerow(new_columns_names)
+
+            is_first_row = True
+            for line in file_trace:
+                nb_dci_msg += 1
+                line = line.strip()
+                data_trace = line.split(',')
+
+                if len(data_trace) < 5:
+                    print("ERROR: Number of columns < 5")
+                    continue
+
+                # Trace information
+                current_time = int(data_trace[time_column])
+                current_rnti = int(float(data_trace[rnti_column]))
+
+                # Performance analysis
+                if is_first_row:
+                    first_time_trace = current_time
+                    last_time_performance = current_time
+                    is_first_row = False
+
+                # Calculate the difference between two consecutive sub-frames
+                diff_sf = current_time - last_time_performance
+                if diff_sf < 0:
+                    print("Error during correction phase in current_time =", current_time)
+                elif diff_sf > 2:
+                    # Count missing sub-frames based on the timestamp
+                    total_missing_sf += diff_sf
                 last_time_performance = current_time
-                is_first_row = False
 
-            # Calculate the difference between two consecutive sub-frames
-            diff_sf = current_time - last_time_performance
-            if diff_sf < 0:
-                print("Error during correction phase in current_time =", current_time)
-            elif diff_sf > 2:
-                # Count missing sub-frames based on the timestamp
-                total_missing_sf += diff_sf
-            last_time_performance = current_time
+                if current_rnti > 0:
+                    # Proceed only if RNTI is found
+                    format_dci = int(float(data_trace[format_column]))
+                    payload = data_trace[payload_column]
 
-            if current_rnti > 0:
-                # Proceed only if RNTI is found
-                format_dci = int(float(data_trace[format_column]))
-                payload = data_trace[payload_column]
+                    # Decode DCI payload
+                    is_common = not (10 < current_rnti < 65534) # RA-RNTI, P-RNTI, SI-RNTI
 
-                # Decode DCI payload
-                is_common = not (10 < current_rnti < 65534) # RA-RNTI, P-RNTI, SI-RNTI
+                    # Determine the last TBS used
+                    if format_dci > 0:
+                        last_TBS1, last_TBS2 = last_tbs_crnti[current_rnti, 0], last_tbs_crnti[current_rnti, 1]
+                    else:
+                        last_TBS1, last_TBS2 = last_tbs_crnti[current_rnti, 2], -2
 
-                # Determine the last TBS used
-                if format_dci > 0:
-                    last_TBS1, last_TBS2 = last_tbs_crnti[current_rnti, 0], last_tbs_crnti[current_rnti, 1]
-                else:
-                    last_TBS1, last_TBS2 = last_tbs_crnti[current_rnti, 2], -2
+                    # Call the function to decode the DCI payload
+                    nb_tb, MCSi_1, MCSi_2, TBS_1, TBS_2, nb_prb, idx_prb = decode_dci_payload(is_common, format_dci, payload, last_TBS1, last_TBS2, NB_CELL_PRB)
 
-                # Call the function to decode the DCI payload
-                nb_tb, MCSi_1, MCSi_2, TBS_1, TBS_2, nb_prb, idx_prb = decode_dci_payload(is_common, format_dci, payload, last_TBS1, last_TBS2)
+                    # Append the decoded values to the data trace
+                    new_data_trace = data_trace + [nb_tb, MCSi_1, MCSi_2, TBS_1, TBS_2, nb_prb]
 
-                # Append the decoded values to the data trace
-                new_data_trace = data_trace + [nb_tb, MCSi_1, MCSi_2, TBS_1, TBS_2, nb_prb]
+                    # Write the updated row to the new CSV file
+                    csv_writer.writerow(new_data_trace)
 
-                # Write the updated row to the new CSV file
-                csv_writer.writerow(new_data_trace)
+                    # Update the last TBS used
+                    if format_dci > 0:
+                        if TBS_1 >= 0:
+                            last_tbs_crnti[current_rnti, 0] = TBS_1
+                        if TBS_2 >= 0:
+                            last_tbs_crnti[current_rnti, 1] = TBS_2
+                    else:
+                        if TBS_1 >= 0:
+                            last_tbs_crnti[current_rnti, 2] = TBS_1
 
-                # Update the last TBS used
-                if format_dci > 0:
-                    if TBS_1 >= 0:
-                        last_tbs_crnti[current_rnti, 0] = TBS_1
-                    if TBS_2 >= 0:
-                        last_tbs_crnti[current_rnti, 1] = TBS_2
-                else:
-                    if TBS_1 >= 0:
-                        last_tbs_crnti[current_rnti, 2] = TBS_1
+            total_monitoring_sf = last_time_performance - first_time_trace
+            time_not_monitored_perc = 100 * total_missing_sf / total_monitoring_sf
 
-        total_monitoring_sf = last_time_performance - first_time_trace
-        time_not_monitored_perc = 100 * total_missing_sf / total_monitoring_sf
+            print("Monitoring period (in seconds):", total_monitoring_sf / 1000)
+            print("Missing subframes (in seconds):", total_missing_sf / 1000)
+            print("Missing subframes (%):", np.round(time_not_monitored_perc, 4))
+            print("\n")
 
-        print("Monitoring period (in seconds):", total_monitoring_sf / 1000)
-        print("Missing subframes (in seconds):", total_missing_sf / 1000)
-        print("Missing subframes (%):", np.round(time_not_monitored_perc, 4))
-        print("\n")
-
-else:
-    print("\nNo decoding phase!\n\n")
+    else:
+        print("\nNo decoding phase!\n\n")
 
 
 
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#
-#                               Histogram filter phase
-#
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-# The goal of this section is to remove potential false DCI messages that may not have been detected by the LTEanalyzer.
-# A DCI message is considered valid if there is at least one other DCI message within the time interval between
-# activity_wds milliseconds before and activity_wds milliseconds after the analyzed DCI message.
-
-# Part 1: Searching for false positives
-# This part analyzes data in a file and identifies false positives
-
-# Part 2: Dropping false positives
-# This part processes the data again, eliminating rows corresponding to false positives.
-
-if histogram_filter_phase:
-    # Initialize lists for tracking CRNTI information and create an empty list for false positives
-    crnti_last_t = [0] * 65536
-    diff_last_interarrival = [0] * 65536
-    last_line_crnti = [0] * 65536
-    false_positive_list = []
-
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    #
+    #                               Histogram filter phase
+    #
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # The goal of this section is to remove potential false DCI messages that may not have been detected by the LTEanalyzer.
+    # A DCI message is considered valid if there is at least one other DCI message within the time interval between
+    # activity_wds milliseconds before and activity_wds milliseconds after the analyzed DCI message.
 
     # Part 1: Searching for false positives
-    with open(PATH_dci, 'r') as file_trace:
-        csv_reader = csv.reader(file_trace)
-        columns_names = next(csv_reader)
-
-        idx_line = 0
-
-        for line in file_trace:
-            data_trace = line.split(',')
-            current_time, current_rnti = map(int, map(float, data_trace[:2]))
-
-            if 10 < current_rnti < 65534:
-                # Calculate the time difference between subframes
-                diff_t_crnti = abs(crnti_last_t[current_rnti] - current_time)
-
-                # Check for a new connection and record false positives
-                if diff_t_crnti > activity_wds and diff_last_interarrival[current_rnti] > activity_wds:
-                    false_positive_list.append(last_line_crnti[current_rnti])
-
-                last_line_crnti[current_rnti] = idx_line
-                diff_last_interarrival[current_rnti] = diff_t_crnti
-                crnti_last_t[current_rnti] = current_time
-            idx_line += 1
-
-        for i in range(65536):
-            if diff_last_interarrival[i] > activity_wds:
-                false_positive_list.append(last_line_crnti[i])
-
-        false_positive_list.sort()
+    # This part analyzes data in a file and identifies false positives
 
     # Part 2: Dropping false positives
-    with open(PATH_dci, 'r') as file_trace, open(PATH_filter, 'w', newline='') as new_file_trace:
-        csv_reader = csv.reader(file_trace)
-        csv_writer = csv.writer(new_file_trace)
-        columns_names = next(csv_reader)
-        csv_writer.writerow(columns_names)
+    # This part processes the data again, eliminating rows corresponding to false positives.
 
-        idx_line = 0
-        false_positive_idx = 0
+    if histogram_filter_phase:
+        # Initialize lists for tracking CRNTI information and create an empty list for false positives
+        crnti_last_t = [0] * 65536
+        diff_last_interarrival = [0] * 65536
+        last_line_crnti = [0] * 65536
+        false_positive_list = []
 
-        for line in file_trace:
-            data_trace = line.split(',')
-            current_time, current_rnti = map(int, map(float, data_trace[:2]))
 
-            new_data_trace = data_trace.copy()
+        # Part 1: Searching for false positives
+        with open(PATH_dci, 'r') as file_trace:
+            csv_reader = csv.reader(file_trace)
+            columns_names = next(csv_reader)
 
-            if not false_positive_list:
-                # If there are no false positives, write the line to the new file
-                csv_writer.writerow(new_data_trace)
-            else:
-                if idx_line != false_positive_list[false_positive_idx]:
-                    # If the current line is not a false positive, write it to the new file
+            idx_line = 0
+
+            for line in file_trace:
+                data_trace = line.split(',')
+                current_time, current_rnti = map(int, map(float, data_trace[:2]))
+
+                if 10 < current_rnti < 65534:
+                    # Calculate the time difference between subframes
+                    diff_t_crnti = abs(crnti_last_t[current_rnti] - current_time)
+
+                    # Check for a new connection and record false positives
+                    if diff_t_crnti > activity_wds and diff_last_interarrival[current_rnti] > activity_wds:
+                        false_positive_list.append(last_line_crnti[current_rnti])
+
+                    last_line_crnti[current_rnti] = idx_line
+                    diff_last_interarrival[current_rnti] = diff_t_crnti
+                    crnti_last_t[current_rnti] = current_time
+                idx_line += 1
+
+            for i in range(65536):
+                if diff_last_interarrival[i] > activity_wds:
+                    false_positive_list.append(last_line_crnti[i])
+
+            false_positive_list.sort()
+
+        # Part 2: Dropping false positives
+        with open(PATH_dci, 'r') as file_trace, open(PATH_filter, 'w', newline='') as new_file_trace:
+            csv_reader = csv.reader(file_trace)
+            csv_writer = csv.writer(new_file_trace)
+            columns_names = next(csv_reader)
+            csv_writer.writerow(columns_names)
+
+            idx_line = 0
+            false_positive_idx = 0
+
+            for line in file_trace:
+                data_trace = line.split(',')
+                current_time, current_rnti = map(int, map(float, data_trace[:2]))
+
+                new_data_trace = data_trace.copy()
+
+                if not false_positive_list:
+                    # If there are no false positives, write the line to the new file
                     csv_writer.writerow(new_data_trace)
-                elif false_positive_idx < (len(false_positive_list) - 1):
-                    # Move to the next false positive if more are in the list
-                    false_positive_idx += 1
-            idx_line += 1
-else:
-    # If we are not in the filtering phase, display a message
-    print("\n No filtering phase ! \n\n")
-
-
-#####################################################################################
-# Adding connection id
-#####################################################################################
-
-# The RNTI serves as a temporal identifier for a connection. When a connection ends, the base station (BS) reuses
-# the same RNTI. Consequently, in the file generated by the LTE analyzer, multiple connections may share the same RNTI.
-# To establish a unique identification for these connections throughout the measurement campaign, this section appends
-# a unique connection identifier to the DCI messages.
-# In this section, a 'connection_id' is added to each new RRC connection based on the terminal's inactivity time.
-# We consider that for a specific RNTI, if no DCI messages are received for a duration longer than the inactivity timer
-# parameter, the connection is terminated by the eNB. Therefore, if the same RNTI reappears, it will be treated as
-# a new connection. The inactivity timer parameter is typically set to a few seconds. Bouygues uses up to 12 seconds,
-# while other mobile network operators (MNOs) use shorter values. We assume that if there's a silence period
-# of up to 20 seconds, we consider the connection to have terminated.
-
-# For the reserved RNTI values, we use the following IDs:
-# RA-RNTI: connection_id = 1
-# P-RNTI: connection_id = 2
-# SI-RNTI: connection_id = 3
-
-if adding_connection_id:
-
-    # Initialize variables and data structures
-    connection_nb = 3
-    is_first_chunk = True
-
-    # Create a DataFrame to store the last time and connection_id for each CRNTI
-    hist_crnti = pd.DataFrame(np.zeros((65536, 2)).astype('int'), columns=['last_time', 'connection_id'])
-
-    for df in pd.read_csv(PATH_filter, chunksize=100000, low_memory=False):
-        # Remove unnecessary columns
-        df = df.drop(['nb_cce', 'ncce', 'L', 'nof_bits', 'dci_payload'], axis=1)
-
-        # Sort the DataFrame by 'rnti' and 'Time'
-        df = df.sort_values(['rnti', 'Time']).reset_index(drop=True)
-        df['connection_id'] = 0
-
-        # Create a list of unique 'rnti' values in the subframe
-        rnti_list = df['rnti'].unique()
-
-        for rnti in rnti_list:
-            if rnti < 10:
-                # RA-RNTI: Set connection_id to 1
-                df.loc[df['rnti'] == rnti, 'connection_id'] = 1
-            elif rnti == 65534:
-                # P-RNTI: Set connection_id to 2
-                df.loc[df['rnti'] == rnti, 'connection_id'] = 2
-            elif rnti == 65535:
-                # SI-RNTI: Set connection_id to 3
-                df.loc[df['rnti'] == rnti, 'connection_id'] = 3
-            else:
-                # CRNTI
-                t0 = df.loc[df['rnti'] == rnti, 'Time'].iloc[0]
-                dif = t0 - hist_crnti['last_time'].iloc[rnti]
-
-                if dif >= inactivity_timer:
-                    # New connection: Increment connection_nb and assign the new connection_id
-                    connection_nb += 1
-                    connection_id = connection_nb
                 else:
-                    # Reuse the previous connection_id
-                    connection_id = hist_crnti['connection_id'].iloc[rnti]
+                    if idx_line != false_positive_list[false_positive_idx]:
+                        # If the current line is not a false positive, write it to the new file
+                        csv_writer.writerow(new_data_trace)
+                    elif false_positive_idx < (len(false_positive_list) - 1):
+                        # Move to the next false positive if more are in the list
+                        false_positive_idx += 1
+                idx_line += 1
+    else:
+        # If we are not in the filtering phase, display a message
+        print("\n No filtering phase ! \n\n")
 
-                # Assign the connection_id to the appropriate rows
-                df.loc[df['rnti'] == rnti, 'connection_id'] = connection_id
 
-                # Handle cases with multiple connections in the current DataFrame
-                temp = df.loc[df['rnti'] == rnti].copy()
-                temp['diff'] = temp['Time'].diff().dropna()
-                dci_new_connect = temp[temp['diff'] > inactivity_timer]
+    #####################################################################################
+    # Adding connection id
+    #####################################################################################
 
-                if len(dci_new_connect) >= 1:
-                    for j in range(len(dci_new_connect)):
+    # The RNTI serves as a temporal identifier for a connection. When a connection ends, the base station (BS) reuses
+    # the same RNTI. Consequently, in the file generated by the LTE analyzer, multiple connections may share the same RNTI.
+    # To establish a unique identification for these connections throughout the measurement campaign, this section appends
+    # a unique connection identifier to the DCI messages.
+    # In this section, a 'connection_id' is added to each new RRC connection based on the terminal's inactivity time.
+    # We consider that for a specific RNTI, if no DCI messages are received for a duration longer than the inactivity timer
+    # parameter, the connection is terminated by the eNB. Therefore, if the same RNTI reappears, it will be treated as
+    # a new connection. The inactivity timer parameter is typically set to a few seconds. Bouygues uses up to 12 seconds,
+    # while other mobile network operators (MNOs) use shorter values. We assume that if there's a silence period
+    # of up to 20 seconds, we consider the connection to have terminated.
+
+    # For the reserved RNTI values, we use the following IDs:
+    # RA-RNTI: connection_id = 1
+    # P-RNTI: connection_id = 2
+    # SI-RNTI: connection_id = 3
+
+    if adding_connection_id:
+
+        # Initialize variables and data structures
+        connection_nb = 3
+        is_first_chunk = True
+
+        # Create a DataFrame to store the last time and connection_id for each CRNTI
+        hist_crnti = pd.DataFrame(np.zeros((65536, 2)).astype('int'), columns=['last_time', 'connection_id'])
+
+        for df in pd.read_csv(PATH_filter, chunksize=100000, low_memory=False):
+            # Remove unnecessary columns
+            df = df.drop(['nb_cce', 'ncce', 'L', 'nof_bits', 'dci_payload'], axis=1)
+
+            # Sort the DataFrame by 'rnti' and 'Time'
+            df = df.sort_values(['rnti', 'Time']).reset_index(drop=True)
+            df['connection_id'] = 0
+
+            # Create a list of unique 'rnti' values in the subframe
+            rnti_list = df['rnti'].unique()
+
+            for rnti in rnti_list:
+                if rnti < 10:
+                    # RA-RNTI: Set connection_id to 1
+                    df.loc[df['rnti'] == rnti, 'connection_id'] = 1
+                elif rnti == 65534:
+                    # P-RNTI: Set connection_id to 2
+                    df.loc[df['rnti'] == rnti, 'connection_id'] = 2
+                elif rnti == 65535:
+                    # SI-RNTI: Set connection_id to 3
+                    df.loc[df['rnti'] == rnti, 'connection_id'] = 3
+                else:
+                    # CRNTI
+                    t0 = df.loc[df['rnti'] == rnti, 'Time'].iloc[0]
+                    dif = t0 - hist_crnti['last_time'].iloc[rnti]
+
+                    if dif >= inactivity_timer:
+                        # New connection: Increment connection_nb and assign the new connection_id
                         connection_nb += 1
                         connection_id = connection_nb
-                        df.loc[(df['rnti'] == rnti) & (df['Time'] >= dci_new_connect['Time'].iloc[j]), 'connection_id'] = connection_id
+                    else:
+                        # Reuse the previous connection_id
+                        connection_id = hist_crnti['connection_id'].iloc[rnti]
 
-                # Update the last_time and connection_id for the current CRNTI in hist_crnti
-                hist_crnti.at[rnti, 'last_time'] = df.loc[df['rnti'] == rnti, 'Time'].iloc[-1]
-                hist_crnti.at[rnti, 'connection_id'] = connection_id
+                    # Assign the connection_id to the appropriate rows
+                    df.loc[df['rnti'] == rnti, 'connection_id'] = connection_id
 
-        df = df.sort_values('Time').reset_index(drop=True)
-        # Save the trace
-        output_file = TraceName + '_with_id.csv'
-        if is_first_chunk:
-            df.to_csv(TraceName + '_with_id.csv', mode='w', header=True, index=False)
-            is_first_chunk = False
-        else:
-            df.to_csv(TraceName + '_with_id.csv', mode='a', header=False, index=False)
+                    # Handle cases with multiple connections in the current DataFrame
+                    temp = df.loc[df['rnti'] == rnti].copy()
+                    temp['diff'] = temp['Time'].diff().dropna()
+                    dci_new_connect = temp[temp['diff'] > inactivity_timer]
 
-# Clean up temporary CSV files
-os.remove(PATH_corrected)
-os.remove(PATH_dci)
-os.remove(PATH_filter)
+                    if len(dci_new_connect) >= 1:
+                        for j in range(len(dci_new_connect)):
+                            connection_nb += 1
+                            connection_id = connection_nb
+                            df.loc[(df['rnti'] == rnti) & (df['Time'] >= dci_new_connect['Time'].iloc[j]), 'connection_id'] = connection_id
 
-print("DCI decoding was successful!")
-print("A new CSV file was created: " + output_file)
+                    # Update the last_time and connection_id for the current CRNTI in hist_crnti
+                    hist_crnti.at[rnti, 'last_time'] = df.loc[df['rnti'] == rnti, 'Time'].iloc[-1]
+                    hist_crnti.at[rnti, 'connection_id'] = connection_id
+
+            df = df.sort_values('Time').reset_index(drop=True)
+            # Save the trace
+            output_file = TraceName + '_with_id.csv'
+            if is_first_chunk:
+                df.to_csv(TraceName + '_with_id.csv', mode='w', header=True, index=False)
+                is_first_chunk = False
+            else:
+                df.to_csv(TraceName + '_with_id.csv', mode='a', header=False, index=False)
+
+    # Clean up temporary CSV files
+    os.remove(PATH_corrected)
+    os.remove(PATH_dci)
+    os.remove(PATH_filter)
+
+    print("DCI decoding was successful!")
+    print("A new CSV file was created: " + output_file)
+
+if __name__ == "__main__":
+    main()
