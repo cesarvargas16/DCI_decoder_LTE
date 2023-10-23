@@ -37,13 +37,10 @@ import sys
 #
 ################################################################################
 
-# TraceName = "/home/imt/DCI_LTE_decoder/Trace20221014_155434"
-# earfcn = 900
-
-TraceName = "/home/imt/DCI_LTE_decoder/Trace20221014_160719"
+TraceName = "Trace20221014_155434"
 earfcn = 900
 
-
+# earfcn = 6200
 #earfcn = 9385
 
 #################################################################################
@@ -974,30 +971,37 @@ def prb_index_ra_type1(subset, shift_is_used, n_rb_type1, bitmap):
                 raise ValueError("Error, invalid index in Type1 RA")
     return prb_index
 
-# Function to determine PRB index for Type 2 RA
+
 def prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap):
     prb_index = [0] * NB_CELL_PRB
+
     if is_localized_vrb:
+        # Localized VRB
         N_vrb = NB_CELL_PRB
         riv = int(bitmap, 2)
     else:
-        if NB_CELL_PRB < 50 or (dci_format == SRSLTE_DCI_FORMAT1A and is_common_rnti):
+        # Distributed VRB
+        if (NB_CELL_PRB < 50) or ((dci_format == SRSLTE_DCI_FORMAT1A) and is_common_rnti):
+            # always Ngap,1
             is_Ngap_1 = True
             riv = int(bitmap, 2)
             Ngap = ra_type2_Ngap(1)
             N_vrb = n_vrb_distributed_type2(Ngap, is_Ngap_1)
         else:
-            n_gap_flag = int(bitmap[0])
+            n_gap_flag = int(bitmap[0])  # one bit
             riv = int(bitmap[1:], 2)
             if n_gap_flag == 0:
+                # Ngap,1
                 is_Ngap_1 = True
                 Ngap = ra_type2_Ngap(1)
                 N_vrb = n_vrb_distributed_type2(Ngap, is_Ngap_1)
             else:
+                # Ngap,2
                 is_Ngap_1 = False
                 Ngap = ra_type2_Ngap(2)
                 N_vrb = n_vrb_distributed_type2(Ngap, is_Ngap_1)
 
+    # riv value to L_crb and RB_start values
     if dci_format == SRSLTE_DCI_FORMAT1C:
         if NB_CELL_PRB < 50:
             n_step = 2
@@ -1013,18 +1017,27 @@ def prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap):
         RB_start *= n_step
         L_crb *= n_step
 
+    # Mapping VRB to PRB from 6.2.3.2 of 3gpp 36.211
     if is_localized_vrb:
-        prb_index[int(RB_start): int(RB_start) + int(L_crb)] = [3] * int(L_crb)
+        # Localized VRB
+        prb_index[int(RB_start): int(RB_start) + int(L_crb)] = [3]*int(L_crb)
+
     else:
-        prb_index_distVRB = [0, 0] * NB_CELL_PRB
+        # distributed VRB
+        prb_index_distVRB = np.zeros((2, NB_CELL_PRB))
         N_vrb = n_vrb_distributed_type2(Ngap, is_Ngap_1)
+
         if is_Ngap_1:
+            # Ngap,1
             N_tilde_vrb = N_vrb
         else:
-            N_tilde_vrb = 2 * Ngap
+            # Ngap,2
+            N_tilde_vrb = 2 * Ngap  # as 3gpp 36.211
+
         P = resource_block_group_size(NB_CELL_PRB)
         N_row = math.ceil(N_tilde_vrb / (4 * P)) * P
         N_null = 4 * N_row - N_tilde_vrb
+
         for i in range(int(L_crb)):
             n_vrb = i + RB_start
             n_tilde_vrb = int(n_vrb % N_tilde_vrb)
@@ -1033,25 +1046,38 @@ def prb_index_ra_type2(dci_format, is_common_rnti, is_localized_vrb, bitmap):
             n_tilde2_prb = N_row * (n_tilde_vrb % 4) + math.floor(n_tilde_vrb / 4) + N_tilde_vrb * math.floor(
                 n_vrb / N_tilde_vrb)
 
-            if N_null != 0 and n_tilde_vrb >= (N_tilde_vrb - N_null) and (n_tilde_vrb % 2) == 1:
+            # for even slot (first slot 3gpp 36.211)
+            if (N_null != 0) and (n_tilde_vrb >= (N_tilde_vrb - N_null)) and ((n_tilde_vrb % 2) == 1):
                 n_tilde_prb_even = n_tilde_prb - N_row
+
             elif N_null != 0 and n_tilde_vrb >= (N_tilde_vrb - N_null) and (n_tilde_vrb % 2) == 0:
                 n_tilde_prb_even = n_tilde_prb - N_row + N_null / 2
+
             elif N_null != 0 and n_tilde_vrb < (N_tilde_vrb - N_null) and (n_tilde_vrb % 4) >= 2:
                 n_tilde_prb_even = n_tilde2_prb - N_null / 2
             else:
                 n_tilde_prb_even = n_tilde2_prb
 
+            # for odd slot (second slot according to 3gpp 36.211)
             n_tilde_prb_odd = int(
                 (n_tilde_prb_even + N_tilde_vrb / 2) % N_tilde_vrb + N_tilde_vrb * math.floor(n_vrb / N_tilde_vrb))
 
             if n_tilde_prb_even < N_tilde_vrb / 2:
                 if n_tilde_prb_even < NB_CELL_PRB:
-                    prb_index_distVRB[int(n_tilde_prb_even)] = 1
+                    prb_index_distVRB[0, int(n_tilde_prb_even)] = 1
             else:
                 if (n_tilde_prb_even + Ngap - N_tilde_vrb / 2) < NB_CELL_PRB:
-                    prb_index_distVRB[int(n_tilde_prb_even + Ngap - N_tilde_vrb / 2)] = 1
-        prb_index = (2 * prb_index_distVRB[0] + prb_index_distVRB[1]).astype('int').tolist()
+                    prb_index_distVRB[0, int(n_tilde_prb_even + Ngap - N_tilde_vrb / 2)] = 1
+
+            if n_tilde_prb_odd < N_tilde_vrb / 2:
+                if n_tilde_prb_odd < NB_CELL_PRB:
+                    prb_index_distVRB[1, int(n_tilde_prb_odd)] = 1
+            else:
+                if (n_tilde_prb_odd + Ngap - N_tilde_vrb / 2) < NB_CELL_PRB:
+                    prb_index_distVRB[1, int(n_tilde_prb_odd + Ngap - N_tilde_vrb / 2)] = 1
+
+        # prb_index_distVRB to prb_index
+        prb_index = (2 * prb_index_distVRB[0, :] + prb_index_distVRB[1, :]).astype('int').tolist()
     return prb_index
 
 
