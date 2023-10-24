@@ -1,12 +1,10 @@
 # DCI_decoder_LTE
 
-DCI message decoding
-The Trace_DATE.csv file contains, among other information, the payload of the DCI messages. The payload is a string of bits that must be decoded according to 3GPP specifications. For this purpose, we
-execute the DCIdecoder.py to decode the trace file created by the LTEanalyzer.
+The Trace_DATE.csv file created by the LTEanalyzer contains, among other information, the payload of the DCI messages. The payload is a string of bits that must be decoded according to 3GPP specifications. To decode the DCI payload of "Trace_DATE.csv," which corresponds to monitoring the EARFCN band, run the following command:
 
-A new csv file Trace_DATE_with_id.csv is created which contains the information carried by the control messages. This file will be used for the machine learning model.
+python3 DCIdecoder.py -t Trace_DATE.csv -e EARFCN
 
-In the Trace_DATE_with_id.csv file, each row represents a DCI message, and the columns include the following features:
+A new csv file Trace_DATE_with_id.csv is created which contains the information carried by the control messages. In the Trace_DATE_with_id.csv file, each row represents a DCI message, and the columns include the following features:
 - Time: Unix timestamp in milliseconds 
 - rnti: Radio Network Temporary Identifier (RNTI) associated with the DCI
 - SFN: system frame number
@@ -22,4 +20,4 @@ In the Trace_DATE_with_id.csv file, each row represents a DCI message, and the c
 - connection_id: unique connection identifier
 
 The RNTIs values 5, 65534, and 65535 are reserved for random access, paging messages, and system information. These values correspond to connection_id = {1, 2, 3}. These values should not be
-considered as connections established by the terminals. DCI format 0 is used for uplink and DCI format 1A and 2 for downlink.
+considered as connections established by the terminals. DCI format 0 is used for uplink.
