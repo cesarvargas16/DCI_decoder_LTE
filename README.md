@@ -1,8 +1,16 @@
 # DCI_decoder_LTE
 
-The Trace_DATE.csv file created by the LTEanalyzer contains, among other information, the payload of the DCI messages. The payload is a string of bits that must be decoded according to 3GPP specifications. To decode the DCI payload of "Trace_DATE.csv," which corresponds to monitoring the EARFCN band, run the following command:
+The Trace_DATE.csv file created by the LTEanalyzer contains, among other information, the payload of the DCI messages. The payload is a string of bits that must be decoded according to 3GPP specifications. 
 
-python3 DCIdecoder.py -t Trace_DATE.csv -e EARFCN
+## Prerequisites
+Before running the code, make sure you have the following libraries installed:
+- [numpy](https://numpy.org/)
+- [pandas](https://pandas.pydata.org/)
+
+## Usage instructions
+To decode the DCI payload of "Trace_DATE.csv," which corresponds to monitoring the EARFCN band, run the following command:
+
+```python3 DCIdecoder.py -t Trace_DATE.csv -e EARFCN```
 
 A new csv file Trace_DATE_with_id.csv is created which contains the information carried by the control messages. In the Trace_DATE_with_id.csv file, each row represents a DCI message, and the columns include the following features:
 - Time: Unix timestamp in milliseconds 
