@@ -12,7 +12,7 @@ To decode the DCI payload of "TraceName.csv" which corresponds to monitoring the
 
 ```python3 DCIdecoder.py -t TraceName.csv -e EARFCN```
 
-A new csv file Trace_DATE_with_id.csv is created which contains the information carried by the control messages. In the TraceName_with_id.csv file, each row represents a DCI message, and the columns include the following features:
+A new csv file TraceName_with_id.csv is created which contains the information carried by the control messages. In the TraceName_with_id.csv file, each row represents a DCI message, and the columns include the following features:
 - Time: Unix timestamp in milliseconds 
 - rnti: Radio Network Temporary Identifier (RNTI) associated with the DCI
 - SFN: system frame number
