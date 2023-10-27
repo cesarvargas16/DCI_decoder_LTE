@@ -10,7 +10,7 @@ Before running the code, make sure you have the following libraries installed:
 ## Usage instructions
 To decode the DCI payload of "Trace_DATE.csv," which corresponds to monitoring the EARFCN band, run the following command:
 
-```python3 DCIdecoder.py -t Trace_DATE.csv -e EARFCN```
+```python3 DCIdecoder.py -t TraceDATE_EARFCN.csv -e EARFCN```
 
 A new csv file Trace_DATE_with_id.csv is created which contains the information carried by the control messages. In the Trace_DATE_with_id.csv file, each row represents a DCI message, and the columns include the following features:
 - Time: Unix timestamp in milliseconds 
