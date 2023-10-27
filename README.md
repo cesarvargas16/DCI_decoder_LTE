@@ -8,11 +8,11 @@ Before running the code, make sure you have the following libraries installed:
 - [pandas](https://pandas.pydata.org/)
 
 ## Usage instructions
-To decode the DCI payload of "TraceDATE_EARFCN.csv" which corresponds to monitoring the EARFCN band, run the following command:
+To decode the DCI payload of "TraceName.csv" which corresponds to monitoring the EARFCN band, run the following command:
 
-```python3 DCIdecoder.py -t TraceDATE_EARFCN.csv -e EARFCN```
+```python3 DCIdecoder.py -t TraceName.csv -e EARFCN```
 
-A new csv file Trace_DATE_with_id.csv is created which contains the information carried by the control messages. In the Trace_DATE_with_id.csv file, each row represents a DCI message, and the columns include the following features:
+A new csv file Trace_DATE_with_id.csv is created which contains the information carried by the control messages. In the TraceName_with_id.csv file, each row represents a DCI message, and the columns include the following features:
 - Time: Unix timestamp in milliseconds 
 - rnti: Radio Network Temporary Identifier (RNTI) associated with the DCI
 - SFN: system frame number
