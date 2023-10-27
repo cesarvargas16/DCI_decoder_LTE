@@ -8,7 +8,7 @@ Before running the code, make sure you have the following libraries installed:
 - [pandas](https://pandas.pydata.org/)
 
 ## Usage instructions
-To decode the DCI payload of "Trace_DATE.csv," which corresponds to monitoring the EARFCN band, run the following command:
+To decode the DCI payload of "TraceDATE_EARFCN.csv" which corresponds to monitoring the EARFCN band, run the following command:
 
 ```python3 DCIdecoder.py -t TraceDATE_EARFCN.csv -e EARFCN```
 
