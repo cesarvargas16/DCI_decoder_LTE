@@ -1,6 +1,6 @@
 # DCI_decoder_LTE
 
-The Trace_DATE.csv file created by the LTEanalyzer contains, among other information, the payload of the DCI messages. The payload is a string of bits that must be decoded according to 3GPP specifications. 
+The TraceName.csv file created by the LTEanalyzer contains, among other information, the payload of the DCI messages. The payload is a string of bits that must be decoded according to 3GPP specifications. 
 
 ## Prerequisites
 Before running the code, make sure you have the following libraries installed:
