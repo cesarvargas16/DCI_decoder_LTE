@@ -1970,7 +1970,7 @@ def main():
         operator = "Orange"
         Bw = 5  # in MHz
         f_dl = 2142.5  # in MHz
-    elif earfcn == 525:
+    elif earfcn == 524:
         operator = "Orange"
         Bw = 15  # in MHz
         f_dl = 2162.5  # in MHz
